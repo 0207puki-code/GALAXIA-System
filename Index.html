@@ -1,1 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    :root { --bg: #05080f; --accent: #c5a059; --hot: #ff4d4d; --warm: #ffcc00; --cool: #4de6ff; --glass: rgba(255, 255, 255, 0.05); }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: sans-serif; }
+    body { background: var(--bg); color: #e2e8f0; margin: 0; min-height: 100vh; }
+    .container { width: 100%; max-width: 420px; margin: 0 auto; padding: 30px 20px; }
+    
+    /* 14 顆星佈局 */
+    .grid-stars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+    .field-card { background: var(--glass); border: 1px solid rgba(197,160,89,0.1); padding: 20px 10px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; }
+    .field-card:active { transform: scale(0.95); }
+    
+    .star { font-size: 20px; color: #333; display: block; margin-bottom: 6px; transition: 0.3s; }
+    .star.hot { color: var(--hot); text-shadow: 0 0 10px var(--hot); }
+    .star.warm { color: var(--warm); text-shadow: 0 0 10px var(--warm); }
+    .star.cool { color: var(--cool); text-shadow: 0 0 10px var(--cool); }
 
+    /* UI 元件 */
+    .btn { width: 100%; padding: 18px; background: var(--accent); border: none; font-weight: bold; cursor: pointer; border-radius: 4px; color: #000; margin-top: 10px; }
+    .input-box { width: 100%; background: var(--glass); border: 1px solid rgba(197,160,89,0.3); padding: 14px; color: #fff; margin-bottom: 15px; border-radius: 4px; }
+    .hidden { display: none; }
+    .label { font-size: 11px; color: var(--accent); margin-bottom: 8px; display: block; letter-spacing: 1px; }
+
+    .temp-btn { padding: 12px; font-size: 11px; border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 4px; cursor: pointer; }
+    .temp-btn.active { background: var(--accent); color: #000; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div id="pgWelcome">
+    <h1 style="letter-spacing:10px; color:var(--accent); text-align:center;">GALAXIA</h1>
+    <div style="margin-top:100px;">
+      <button class="btn" onclick="openAuth('student')">探險員連線</button>
+      <button class="btn" style="background:none; border:1px solid var(--accent); color:var(--accent)" onclick="openAuth('parent')">家長觀測模式</button>
+    </div>
+  </div>
+
+  <div id="pgAuth" class="hidden">
+    <h2 id="authTitle" style="color:var(--accent)">LOGIN</h2>
+    <div id="boxLogin">
+      <input type="text" id="lInput" placeholder="手機號碼或編號" class="input-box">
+      <button class="btn" id="btnLogin" onclick="login()">開始驗證</button>
+    </div>
+    <div id="boxReg" class="hidden">
+      <input type="text" id="rn" placeholder="姓名" class="input-box">
+      <input type="tel" id="rp" placeholder="手機" class="input-box">
+      <select id="rb" class="input-box"></select>
+      <select id="rgn" class="input-box"></select>
+      <button class="btn" id="btnReg" onclick="register()">建立星軌</button>
+    </div>
+    <p onclick="toggleReg()" style="text-align:center; font-size:12px; color:var(--accent); margin-top:30px; cursor:pointer;">切換 註冊 / 登入</p>
+  </div>
+
+  <div id="pgRegSuccess" class="hidden">
+    <h2 style="color:var(--accent)">SUCCESS</h2>
+    <div style="background:var(--glass); padding:20px; border:1px solid var(--accent); text-align:center;">
+      <p class="label">登入編號</p><h3 id="resID">---</h3>
+      <p class="label">家長 PIN</p><h3 id="resPIN" style="color:var(--accent)">---</h3>
+    </div>
+    <button class="btn" onclick="location.reload()">返回登入</button>
+  </div>
+
+  <div id="pgHome" class="hidden">
+    <div id="uHeader" style="font-size:22px; color:var(--accent); margin-bottom:5px;">User</div>
+    <p style="font-size:10px; opacity:0.5; margin-bottom:20px;">EXPLORER CONNECTED</p>
+    <div class="grid-stars" id="fieldList"></div>
+    <p onclick="location.reload()" style="text-align:center; margin-top:50px; font-size:11px; opacity:0.3;">TERMINATE SESSION</p>
+  </div>
+
+  <div id="pgTask" class="hidden">
+    <h2 id="tTitle" style="color:var(--accent)">FIELD</h2>
+    <span class="label">觀測日期</span>
+    <input type="date" id="tDate" class="input-box">
+    <textarea id="inO" placeholder="O - 客觀事實" rows="2" class="input-box"></textarea>
+    <textarea id="inR" placeholder="R - 感受反應" rows="2" class="input-box"></textarea>
+    <textarea id="inI" placeholder="I - 學習意義" rows="2" class="input-box"></textarea>
+    <textarea id="inD" placeholder="D - 未來決定" rows="2" class="input-box"></textarea>
+    <span class="label">興趣溫度 (決定星星顏色)</span>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
+      <button class="temp-btn" id="btnUp" onclick="setTemp('升溫')">升溫</button>
+      <button class="temp-btn" id="btnMid" onclick="setTemp('持平')">持平</button>
+      <button class="temp-btn" id="btnDown" onclick="setTemp('降溫')">降溫</button>
+    </div>
+    <div onclick="document.getElementById('fileIn').click()" style="border:1px dashed #5c6b89; padding:20px; text-align:center; font-size:12px; margin-bottom:20px;">
+      <span id="upText">📸 上傳照片</span>
+      <input type="file" id="fileIn" accept="image/*" style="display:none;" onchange="previewFile()">
+    </div>
+    <button class="btn" id="btnUpload" onclick="saveTask()">同步數據</button>
+    <p onclick="showPg('pgHome')" style="text-align:center; color:var(--accent); margin-top:30px; cursor:pointer;">← 返回星圖</p>
+  </div>
+</div>
+
+<script>
+  let u = {}; let curF = ''; let curTemp = '持平'; let base64Img = "";
+  const fields = ["資訊學群", "工程學群", "數理化學", "醫藥衛生", "生命科學", "生物資源", "地球環境", "建築設計", "藝術學群", "社會心理", "大眾傳播", "外語學群", "文史哲學", "教育學群"];
+
+  // 物理返回鍵防白屏補丁
+  history.pushState(null, null, location.href);
+  window.onpopstate = () => {
+    if (u.id) { showPg('pgHome'); history.pushState(null, null, location.href); }
+    else { showPg('pgWelcome'); }
+  };
+
+  window.onload = () => {
+    for(let i=1; i<=8; i++) document.getElementById('rb').options.add(new Option('梯次 '+i, i));
+    for(let i=1; i<=14; i++) document.getElementById('rgn').options.add(new Option('小組 '+i, i));
+  };
+
+  function showPg(id) {
+    document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    window.scrollTo(0,0);
+  }
+
+  function openAuth(m) { u.role = m; showPg('pgAuth'); }
+  function toggleReg() { 
+    document.getElementById('boxLogin').classList.toggle('hidden');
+    document.getElementById('boxReg').classList.toggle('hidden');
+  }
+
+  function login() {
+    const val = document.getElementById('lInput').value;
+    const btn = document.getElementById('btnLogin'); btn.disabled = true; btn.innerText = "驗證中...";
+    google.script.run.withSuccessHandler(r => {
+      btn.disabled = false; btn.innerText = "開始驗證";
+      if(r.success) { u = r; document.getElementById('uHeader').innerText = r.name; loadFields(); showPg('pgHome'); }
+      else alert(r.msg);
+    }).checkLogin(val, u.role);
+  }
+
+  function loadFields() {
+    google.script.run.withSuccessHandler(map => {
+      document.getElementById('fieldList').innerHTML = fields.map(f => {
+        let cls = map[f] === "升溫" ? "hot" : map[f] === "持平" ? "warm" : map[f] === "降溫" ? "cool" : "";
+        return `<div class="field-card" onclick="clickField('${f}')"><span class="star ${cls}">★</span><span style="font-size:12px;">${f}</span></div>`;
+      }).join('');
+    }).getStarStatus(u.id);
+  }
+
+  function clickField(f) {
+    curF = f; document.getElementById('tTitle').innerText = f;
+    document.getElementById('tDate').value = new Date().toISOString().split('T')[0];
+    showPg('pgTask');
+  }
+
+  function setTemp(t) { 
+    curTemp = t; 
+    document.querySelectorAll('.temp-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  function previewFile() {
+    const file = document.getElementById('fileIn').files[0];
+    const reader = new FileReader();
+    reader.onloadend = () => { base64Img = reader.result; document.getElementById('upText').innerText = "✅ 已選取"; };
+    if (file) reader.readAsDataURL(file);
+  }
+
+  function saveTask() {
+    const btn = document.getElementById('btnUpload'); btn.disabled = true; btn.innerText = "同步中...";
+    const done = (url) => {
+      const obj = { id:u.id, name:u.name, field:curF, temp:curTemp, date:document.getElementById('tDate').value, o:document.getElementById('inO').value, r:document.getElementById('inR').value, i:document.getElementById('inI').value, d:document.getElementById('inD').value, imgUrl:url };
+      google.script.run.withSuccessHandler(() => { alert("同步成功"); loadFields(); showPg('pgHome'); btn.disabled = false; }).uploadTask(obj);
+    };
+    if(base64Img) google.script.run.withSuccessHandler(url => done(url)).uploadFile(base64Img, u.id+"_"+Date.now()+".jpg");
+    else done("");
+  }
+
+  function register() {
+    const obj = { role:u.role, name:document.getElementById('rn').value, phone:document.getElementById('rp').value, year:'2026', campType:'夏令營', batchNum:document.getElementById('rb').value, groupNum:document.getElementById('rgn').value };
+    google.script.run.withSuccessHandler(r => {
+      if(r.success) { document.getElementById('resID').innerText = r.id; document.getElementById('resPIN').innerText = r.pin; showPg('pgRegSuccess'); }
+      else alert(r.msg);
+    }).registerUser(obj);
+  }
+</script>
+</body>
+</html>
